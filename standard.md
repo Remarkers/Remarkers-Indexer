@@ -6,13 +6,16 @@ DOT-721 is a standard for non-fungible tokens (NFTs) on the Polkadot network.
 
 ## Global rules
 
-1. Polkadot inscriptions operate by creating transactions of utility batchAll(calls) and are based on the parsing of the memo within the system remarkWithEvent(remark).
+1. Polkadot DOT-721 operate by creating transactions of utility batchAll(calls) and are based on the parsing of the memo within the system remarkWithEvent(remark).
 2. The `remark` context must be a valid JSON string.
 3. All content is case insensitive, the indexer needs to convert the `remark` content to lowercase.
 4. When the data type does not match is considered invalid inscription.
 5. The `protocol` field is the standard identifier, it must be `DOT-721`.
 6. In addition to the fields specified by the operator, other fields in the `remark` context will not be recognized by the indexer. However, this transaction may still be a valid inscription operation and can be used to extend the protocol's usage in certain scenarios.
 7. Only the first call in a batchAll(calls) is indexed, if the first call does not follow the specification, the entire transaction is considered invalid.
+8. Burn nft will be ignored by the indexer
+9. send transactions will be validate by checking all sends contaning same nft id and validating them one by one
+10. Using `remark` call for creating collections, nfts, burns and some of the most rarely used calls and for calls like sends it will be done by using `remark with event` because in these transaction it is needed to remark the addresses
 
 ## Operators
 
@@ -102,7 +105,7 @@ Mint a new NFT.can be only minted by the creator if specified or public mint or 
 ```
 
 ### Send
-send an NFT this will transfer the nft from the current owner to the a new owner by checking the list of past owners transfers from the date of nft mint using the id specified if any tx seems inappropriate during this filter then the last owner (who is ending at the last filter of the indexer without causing any issue) will be the owner specified by the indexer
+send an NFT this will transfer the nft from the current owner to the a new owner send transactions will be validate by checking all sends contaning same nft id and validating them one by one if any tx seems inappropriate during this filter then the last owner (who is ending at the last filter of the indexer without causing any issue) will be the owner specified by the indexer
 ``` JSON
 {
 "protocol": "DOT-721", // string(required)
