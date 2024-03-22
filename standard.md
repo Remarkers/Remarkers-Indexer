@@ -116,7 +116,7 @@ send an NFT this will transfer the nft from the current owner to the a new owner
 
 ```
 ### Burn
-Burn an NFT this operation will remove the NFT from being indexed by the indexer if this call gets excuted for any nft by it's owner it will not recovered again
+Burn an NFT this operation will remove the NFT from being indexed by the indexer if this call gets excuted for any nft by it's owner it will be not recovered again
 ```JSON
 {
 "protocol": "DOT-721", // string(required)
