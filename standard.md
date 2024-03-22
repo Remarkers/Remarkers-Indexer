@@ -34,7 +34,7 @@ Create a new NFT collection.
     "end": 0, // number(optional) end block, if not set or <= 0, it can be minted forever
     "price": 0, // number(optional) price to mint, if not set or <= 0, it can be minted for free
     "limit": 0, // number(optional) limit of per account, if not set or <= 0, it can be minted without limit
-  },
+  }
 }
 ```
 
@@ -49,7 +49,7 @@ When `ms.type` is `wl`, can add whitelist address by issuer.
   "p": "dot-721", // string(required)
   "op": "addwl", // string(required)
   "id": "20006173-1", // string(required): NFT collection ID
-  "data": ["0x1234567890abcdef", "0x1234567890abcdef"], // array(required): whitelist address
+  "data": ["0x1234567890abcdef", "0x1234567890abcdef"] // array(required): whitelist address
 }
 ```
 
@@ -61,6 +61,6 @@ Mint a new NFT.
 {
   "p": "dot-721", // string(required)
   "op": "mint", // string(required)
-  "id": "20006173-1", // string(required): NFT collection ID
+  "id": "20006173-1" // string(required): NFT collection ID
 }
 ```
