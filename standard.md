@@ -84,7 +84,7 @@ This operation will create a new collection which can be minted by only creator 
   "issuer": "0x1234567890abcdef", // string(optional): issuer address, if not set, it is the same as the sender, the account format need follow the SS58 format standard and use the address prefix(0) of the Polkadot network
   "supply": 1000, // number(optional): NFT total supply, if not set or <= 0, it can be minted without limit
   "royalty": 10, // number(optional): 
-  "mint_settings":{null} // null means no mint settings the creator will use the marketplace to create nft and sell them
+  "mint_settings": null // null means no mint settings the creator will use the marketplace to create nft and sell them
 }
 ```
 
