@@ -101,7 +101,7 @@ Mint a new NFT, can be only minted by the creator if specified or public mint or
   "p": "dot-721", // string(required)
   "op": "mint", // string(required)
   "id": "20006173-1", // string(required): A created NFT collection ID
-  "metadata": "ipfs://QmXJUEVyrC6wUMfgHMe89Qv93pR3LazrvQMCPc9vjCSrL5", // string(optional): metadata URI, follow the NFT Token Metadata JSON Schema, only when mint mode is `creator` need to set
+  "metadata": "ipfs://QmXJUEVyrC6wUMfgHMe89Qv93pR3LazrvQMCPc9vjCSrL5", // string(optional): metadata URI, follow the NFT Token Metadata JSON Schema, only when mint mode is `creator` need to set if it's whitelist or public then metadata will be the a number(required) which will belong to a base uri for example if metadata = 1 then 1.json will be the metadata for the NFT
 }
 ```
 
