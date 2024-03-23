@@ -13,6 +13,7 @@ DOT-721 is a standard for non-fungible tokens (NFTs) on the Polkadot network.
 5. The `p` field is the standard identifier, it must be `DOT-721`.
 6. In addition to the fields specified by the operator, other fields in the `remark` context will not be recognized by the indexer. However, this transaction may still be a valid inscription operation and can be used to extend the protocol's usage in certain scenarios.
 7. Only the first call in a batchAll(calls) is indexed, if the first call does not follow the specification, the entire transaction is considered invalid.
+8. operation like list, buy and send will be timestamp based because we need to update NFT operation status with respect to the time
 
 ## NFT Collection Metadata JSON Schema
 
@@ -135,3 +136,27 @@ Burn an NFT this operation will remove the NFT from being indexed by the indexer
 ```
 
 Burn nft will be ignored by the indexer.
+
+### Listing NFT
+Listing NFT will make NFT tradable at a given price
+```JSON
+{
+  "p": "dot-721", // string(required)
+  "op": "list", // string(required)
+  "id": "20006173-1", // string(required): A created NFT collection ID
+  "token_id": 0, // number(required): A minted NFT token ID.
+  "price": 10 // number(required) :  if >0 list else 0 delist, here 10 means 10 DOT
+}
+```
+### Buy NFT
+Buying NFT will delist and transfer NFT to a new owner who pay the desired listing sale price
+```JSON
+{
+  "p": "dot-721", // string(required)
+  "op": "buy", // string(required)
+  "id": "20006173-1", // string(required): A created NFT collection ID
+  "token_id": 0, // number(required): A minted NFT token ID.
+  "price": 10, // here 10 is the sale price of that NFT
+  "sale_id": "20006176-1" // sale id is the list id (extrinsic id of list) which is expired after purchase so it determines that which list id is purchased and confirmed
+}
+```
