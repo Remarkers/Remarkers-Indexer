@@ -10,9 +10,39 @@ DOT-721 is a standard for non-fungible tokens (NFTs) on the Polkadot network.
 2. The `remark` context must be a valid JSON string.
 3. All content is case insensitive, the indexer needs to convert the `remark` content to lowercase.
 4. When the data type does not match is considered invalid inscription.
-5. The `protocol` field is the standard identifier, it must be `DOT-721`.
+5. The `p` field is the standard identifier, it must be `DOT-721`.
 6. In addition to the fields specified by the operator, other fields in the `remark` context will not be recognized by the indexer. However, this transaction may still be a valid inscription operation and can be used to extend the protocol's usage in certain scenarios.
 7. Only the first call in a batchAll(calls) is indexed, if the first call does not follow the specification, the entire transaction is considered invalid.
+
+## NFT Collection Metadata JSON Schema
+
+The metadata of the NFT collection is a JSON object, which must contain the following fields:
+
+```json
+{
+  "name": "Polkadot Punks", // string(required): NFT collection name
+  "description": "Polkadot Punks are the first ever nft collection to be Minted on Polkadot Network over 10,000 items will be minted in the collection", // string(optional): A human-readable description of the item.Markdown is supported.
+  "image": "ipfs://QmXJUEVyrC6wUMfgHMe89Qv93pR3LazrvQMCPc9vjCSrL5", // string(required): NFT collection image URI, it can be IPFS URI or HTTP(s) URL
+}
+```
+
+## NFT Token Metadata JSON Schema
+
+The metadata of the NFT is a JSON object, which must contain the following fields:
+
+```json
+{
+  "name": "Polkadot Punks  #1", // string(required): Name of the item.
+  "description": "Polkadot Punks are the first ever nft collection to be Minted on Polkadot Network over 10,000 items will be minted in the collection", // string(optional): A human-readable description of the item. Markdown is supported.
+  "image": "ipfs://QmXJUEVyrC6wUMfgHMe89Qv93pR3LazrvQMCPc9vjCSrL5", // string(required): NFT image URI, it can be IPFS URI or HTTP(s) URL
+  "attributes": [ // array(optional): These are the attributes for the item
+    {
+      "trait_type": "Background", // string(required): attribute name
+      "value": "Blue" // string(required): attribute value
+    }
+  ]
+}
+```
 
 ## Operators
 
@@ -24,13 +54,13 @@ Create a new NFT collection.
 {
   "p": "dot-721", // string(required)
   "op": "create", // string(required)
-  "metadata": "ipfs://ipfs/QmVgs8P4awhZpFXhkkgnCwBp4AdKRj3F9K58mCZ6fxvn3j", // string(required): metadata URI, JSON text, it can be IPFS URI or HTTP(s) URL collection logo profile
-  "base_uri":"ipfs://ipfs/bafybeicf7md3hsba3m2thhhnrfyct4dyu36bysw7ol7lw5agopf5vbxeqe", // string(required): base uri for the nft content, it can be IPFS URI or HTTP(s) URL, it will be used to generate the nft uri such as `base_uri/nft_id.json`
-  "issuer": "0x1234567890abcdef", // string(optional): issuer address, if not set, it is the same as the sender, the account format need follow the SS58 format standard and use the address prefix(0) of the Polkadot network
+  "metadata": "ipfs://QmXJUEVyrC6wUMfgHMe89Qv93pR3LazrvQMCPc9vjCSrL5", // string(required): metadata URI, follow the NFT Collection Metadata JSON Schema
+  "issuer": "1HzwKkNGv4gdWq4ds1C5k63u8hvmjC6ULneAaZbwUBZEauF", // string(optional): issuer address, if not set, it is the same as the sender, the account format need follow the SS58 format standard and use the address prefix(0) of the Polkadot network
+  "base_uri":"ipfs://bafybeicf7md3hsba3m2thhhnrfyct4dyu36bysw7ol7lw5agopf5vbxeqe", // string(optional): base uri for the nft content, it can be IPFS URI or HTTP(s) URL, it will be used to generate the nft uri such as `base_uri/token_id.json`
   "supply": 1000, // number(optional): NFT total supply, if not set or <= 0, it can be minted without limit
   "royalty": 10, // number(optional): trading fee to the creator, if not set or <= 0, it can be traded without fee
   "mint_settings":{  // object(optional): Mint settings
-    "type": "public", // string(optional): mint type, support  public | whitelist | creator, default is public
+    "mode": "public", // string(optional): mint mode, support  public | whitelist | creator, default is public
     "start": 0, // number(optional) start block, if not set or <= 0, it can be minted immediately
     "end": 0, // number(optional) end block, if not set or <= 0, it can be minted forever
     "price": 0, // number(optional) mint price to the creator, if not set or <= 0, it can be free mint
@@ -41,22 +71,22 @@ Create a new NFT collection.
 
 When indexer recognizes the `create` operation, it will create a new NFT collection by `Extrinsic ID` as the collection ID, such as `20006173-1`.
 
-#### Mint Settings Type
+#### Mint Settings Mode
 
 - `public`: Public mint, anyone can mint the NFT from the collection.
 - `whitelist`: Whitelist mint, only the specified address can mint, more detail please refer to the [Add Whitelist](#add-whitelist) operation.
-- `creator`: Creator mint, only the creator issuer can mint.
+- `creator`: Creator mint, only the NFT collection creator can mint.
 
 
 ### Add Whitelist
 
-When `mint_settings.type` is `whitelist`, can add whitelist address by issuer.
+Only when mint mode is `whitelist`, can add whitelist address by issuer.
 
 ```json
 {
   "p": "dot-721", // string(required)
-  "op": "add_wl", // string(required)
-  "id": "20006173-1", // string(required): NFT collection ID
+  "op": "addwl", // string(required)
+  "id": "20006173-1", // string(required): A created NFT collection ID
   "data": ["0x1234567890abcdef", "0x1234567890abcdef"] // array(required): whitelist address
 }
 ```
@@ -69,7 +99,8 @@ Mint a new NFT, can be only minted by the creator if specified or public mint or
 {
   "p": "dot-721", // string(required)
   "op": "mint", // string(required)
-  "id": "20006173-1" // string(required): NFT collection ID
+  "id": "20006173-1", // string(required): A created NFT collection ID
+  "metadata": "ipfs://QmXJUEVyrC6wUMfgHMe89Qv93pR3LazrvQMCPc9vjCSrL5", // string(optional): metadata URI, follow the NFT Token Metadata JSON Schema, only when mint mode is `creator` need to set
 }
 ```
 
@@ -81,11 +112,11 @@ send an NFT this will transfer the nft from the current owner to the a new owner
 
 ``` JSON
 {
-"p": "dot-721", // string(required)
-"op": "send", //  string(required)
-"id": "20006173-1", // string(required): NFT collection ID
-"token_id": 0, // number(required): NFT token ID
-"recipient": "1HzwKkNGv4gdWq4ds1C5k63u8hvmjC6ULneAaZbwUBZEauF" // receiver address must be chain specified if you send to a wrong address who doesn't have existential balance or a wrong address then nft will be burned for ever or transaction will fail or may be recoreded but not fully received in case of nft sent to right chain address but without considering existential balance then it can be received once the receiver makes the account alive never send nft without a keep alive check in marketplace or without verifying the chain destination address
+  "p": "dot-721", // string(required)
+  "op": "send", //  string(required)
+  "id": "20006173-1", // string(required): A created NFT collection ID
+  "token_id": 0, // number(required): A minted NFT token ID.
+  "recipient": "1HzwKkNGv4gdWq4ds1C5k63u8hvmjC6ULneAaZbwUBZEauF" // receiver address must be chain specified if you send to a wrong address who doesn't have existential balance or a wrong address then nft will be burned for ever or transaction will fail or may be recoreded but not fully received in case of nft sent to right chain address but without considering existential balance then it can be received once the receiver makes the account alive never send nft without a keep alive check in marketplace or without verifying the chain destination address
 }
 
 ```
@@ -96,10 +127,10 @@ Burn an NFT this operation will remove the NFT from being indexed by the indexer
 
 ```JSON
 {
-"p": "dot-721", // string(required)
-"op": "burn", //  string(required)
-"id": "20006173-1", // string(required): NFT collection ID
-"token_id": 0, // number(required): NFT token ID
+  "p": "dot-721", // string(required)
+  "op": "burn", //  string(required)
+  "id": "20006173-1", // string(required): A created NFT collection ID
+  "token_id": 0, // number(required): A minted NFT token ID.
 }
 ```
 
