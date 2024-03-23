@@ -1,6 +1,6 @@
 # Basic Concept
 
-DOT-721 is a standard for non-fungible tokens (NFTs) on the Polkadot network. 
+DOT-721 is a standard for non-fungible tokens (NFTs) on the Polkadot network.
 
 # Specification
 
@@ -22,7 +22,7 @@ The metadata of the NFT collection is a JSON object, which must contain the foll
 {
   "name": "Polkadot Punks", // string(required): NFT collection name
   "description": "Polkadot Punks are the first ever nft collection to be Minted on Polkadot Network over 10,000 items will be minted in the collection", // string(optional): A human-readable description of the item.Markdown is supported.
-  "image": "ipfs://QmXJUEVyrC6wUMfgHMe89Qv93pR3LazrvQMCPc9vjCSrL5", // string(required): NFT collection image URI, it can be IPFS URI or HTTP(s) URL
+  "image": "ipfs://QmXJUEVyrC6wUMfgHMe89Qv93pR3LazrvQMCPc9vjCSrL5" // string(required): NFT collection image URI, it can be IPFS URI or HTTP(s) URL
 }
 ```
 
@@ -35,7 +35,8 @@ The metadata of the NFT is a JSON object, which must contain the following field
   "name": "Polkadot Punks  #1", // string(required): Name of the item.
   "description": "Polkadot Punks are the first ever nft collection to be Minted on Polkadot Network over 10,000 items will be minted in the collection", // string(optional): A human-readable description of the item. Markdown is supported.
   "image": "ipfs://QmXJUEVyrC6wUMfgHMe89Qv93pR3LazrvQMCPc9vjCSrL5", // string(required): NFT image URI, it can be IPFS URI or HTTP(s) URL
-  "attributes": [ // array(optional): These are the attributes for the item
+  "attributes": [
+    // array(optional): These are the attributes for the item
     {
       "trait_type": "Background", // string(required): attribute name
       "value": "Blue" // string(required): attribute value
@@ -55,16 +56,17 @@ Create a new NFT collection.
   "p": "dot-721", // string(required)
   "op": "create", // string(required)
   "metadata": "ipfs://QmXJUEVyrC6wUMfgHMe89Qv93pR3LazrvQMCPc9vjCSrL5", // string(required): metadata URI, follow the NFT Collection Metadata JSON Schema
-  "issuer": "1HzwKkNGv4gdWq4ds1C5k63u8hvmjC6ULneAaZbwUBZEauF", // string(optional): issuer address, if not set, it is the same as the sender, the account format need follow the SS58 format standard and use the address prefix(0) of the Polkadot network
-  "base_uri":"ipfs://bafybeicf7md3hsba3m2thhhnrfyct4dyu36bysw7ol7lw5agopf5vbxeqe", // string(optional): base uri for the nft content, it can be IPFS URI or HTTP(s) URL, it will be used to generate the nft uri such as `base_uri/token_id.json`
+  "issuer": "1HzwKkNGv4gdWq4ds1C5k63u8hvmjC6ULneAaZbwUBZEauF", // string(optional): issuer address, if not set, it is the same as the sender, the account format need follow the SS58 account format
+  "base_uri": "ipfs://bafybeicf7md3hsba3m2thhhnrfyct4dyu36bysw7ol7lw5agopf5vbxeqe", // string(required): base uri for the nft content, it can be IPFS URI or HTTP(s) URL, it will be used to generate the nft uri such as `${base_uri}${token_id}.json`
   "supply": 1000, // number(optional): NFT total supply, if not set or <= 0, it can be minted without limit
   "royalty": 10, // number(optional): trading fee to the creator, if not set or <= 0, it can be traded without fee
-  "mint_settings":{  // object(optional): Mint settings
+  "mint_settings": {
+    // object(optional): Mint settings
     "mode": "public", // string(optional): mint mode, support  public | whitelist | creator, default is public
     "start": 0, // number(optional) start block, if not set or <= 0, it can be minted immediately
     "end": 0, // number(optional) end block, if not set or <= 0, it can be minted forever
-    "price": 0, // number(optional) mint price to the creator, if not set or <= 0, it can be free mint
-    "max_mint": 0, // number(optional) limit of per account, if not set or <= 0, it can be minted without limit
+    "price": "1000000000", // string(optional) mint price to the creator, Planck unit, if not set or <= 0, it can be free mint
+    "limit": 0 // number(optional) limit of per account, if not set or <= 0, it can be minted without limit
   }
 }
 ```
@@ -76,7 +78,6 @@ When indexer recognizes the `create` operation, it will create a new NFT collect
 - `public`: Public mint, anyone can mint the NFT from the collection.
 - `whitelist`: Whitelist mint, only the specified address can mint, more detail please refer to the [Add Whitelist](#add-whitelist) operation.
 - `creator`: Creator mint, only the NFT collection creator can mint.
-
 
 ### Add Whitelist
 
@@ -100,7 +101,7 @@ Mint a new NFT, can be only minted by the creator if specified or public mint or
   "p": "dot-721", // string(required)
   "op": "mint", // string(required)
   "id": "20006173-1", // string(required): A created NFT collection ID
-  "metadata": "ipfs://QmXJUEVyrC6wUMfgHMe89Qv93pR3LazrvQMCPc9vjCSrL5", // string(optional): metadata URI, follow the NFT Token Metadata JSON Schema, only when mint mode is `creator` need to set
+  "metadata": "ipfs://QmXJUEVyrC6wUMfgHMe89Qv93pR3LazrvQMCPc9vjCSrL5" // string(optional): metadata URI, follow the NFT Token Metadata JSON Schema, only when mint mode is `creator` need to set
 }
 ```
 
@@ -110,7 +111,7 @@ When mint successfully, the indexer will create a id for the NFT, incremental fr
 
 send an NFT this will transfer the nft from the current owner to the a new owner send transactions will be validate by checking all sends contaning same nft id and validating them one by one if any tx seems inappropriate during this filter then the last owner (who is ending at the last filter of the indexer without causing any issue) will be the owner specified by the indexer
 
-``` JSON
+```JSON
 {
   "p": "dot-721", // string(required)
   "op": "send", //  string(required)

@@ -12,3 +12,86 @@ datasource db {
   provider = "mysql"
   url      = env("DATABASE_URL")
 }
+
+enum OP {
+  create
+  addwl
+  mint
+  send
+  burn
+}
+
+enum MintMode {
+  public
+  whitelist
+  creator
+}
+
+enum TokenStatus {
+  normal
+  burned
+}
+
+model Collection {
+  id            BigInt    @id @default(autoincrement())
+  collection_id String
+  name          String
+  description   String?
+  image         String
+  issuer        String
+  base_uri      String
+  supply        BigInt?
+  royalty       Decimal?
+  ms_mode       MintMode?
+  ms_start      BigInt?
+  ms_end        BigInt?
+  ms_price      BigInt?
+  ms_limit      Int?
+  create_time   DateTime
+  update_time   DateTime
+
+  @@unique([collection_id])
+  @@map("collection")
+}
+
+model Whitelist {
+  id            BigInt   @id @default(autoincrement())
+  collection_id String
+  address       String
+  create_time   DateTime
+
+  @@index([collection_id, address])
+  @@map("whitelist")
+}
+
+model Token {
+  id            BigInt      @id @default(autoincrement())
+  collection_id String
+  token_id      BigInt
+  name          String
+  description   String?
+  image         String
+  owner         String
+  status        TokenStatus @default(normal)
+  create_time   DateTime
+  update_time   DateTime
+
+  @@unique([collection_id, token_id])
+  @@map("token")
+}
+
+model Transaction {
+  id              BigInt   @id @default(autoincrement())
+  op              OP
+  content         String
+  collection_id   String
+  token_id        BigInt?
+  block_number    BigInt
+  extrinsic_hash  String
+  extrinsic_index Int
+  sender          String
+  create_time     DateTime
+
+  @@index([collection_id, token_id])
+  @@map("transaction")
+}

@@ -1,10 +1,9 @@
 {
-  "name": "typescript-swc-starter",
+  "name": "remarkers-indexer",
   "type": "module",
-  "version": "1.1.7",
-  "author": "maxgfr",
+  "version": "1.0.0",
   "license": "MIT",
-  "description": "A minimalist typescript swc starter",
+  "description": "A DOT-721 NFT indexer",
   "main": "./dist/index.cjs",
   "exports": {
     ".": {
@@ -15,20 +14,19 @@
   "types": "./dist/index.d.ts",
   "repository": {
     "type": "git",
-    "url": "https://github.com/maxgfr/typescript-swc-starter.git"
+    "url": "https://github.com/Remarkers/Remarkers-Indexer.git"
   },
   "bugs": {
-    "url": "https://github.com/maxgfr/typescript-swc-starter/issues"
+    "url": "https://github.com/Remarkers/Remarkers-Indexer/issues"
   },
-  "homepage": "https://github.com/maxgfr/typescript-swc-starter#readme",
+  "homepage": "https://github.com/Remarkers/Remarkers-Indexer#readme",
   "files": [
     "dist"
   ],
   "keywords": [
-    "boilerplate",
-    "typescript",
-    "release",
-    "swc"
+    "polkadot",
+    "nft",
+    "dot-721"
   ],
   "scripts": {
     "test": "jest --passWithNoTests",
@@ -48,7 +46,10 @@
   },
   "dependencies": {
     "@polkadot/api": "^10.11.3",
-    "@prisma/client": "5.10.2"
+    "@polkadot/util-crypto": "^12.6.2",
+    "@prisma/client": "5.10.2",
+    "dotenv": "^16.4.5",
+    "zod": "^3.22.4"
   },
   "devDependencies": {
     "@semantic-release/changelog": "^6.0.3",
