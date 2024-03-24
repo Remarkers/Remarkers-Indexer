@@ -148,8 +148,23 @@ Listing NFT will make NFT tradable at a given price
   "price": 10 // number(required) :  if >0 list else 0 delist, here 10 means 10 DOT
 }
 ```
+
+### Aproval for purchase
+Before making any purchase action our indexer will first verify and give the purchase a green flag to continue if there is any pending transaction then the buy action will be terminated and while in purchase a check and verify method will be implemented then transfer funds or NFT if someone creates a buy request then we give them a secret signature to enter while making the transaction and at one time only single transaction can be maded so signature also has expiry of 1 minutes either confirm the transaction or transaction will get cancelled by the backend any transaction done outside the marketplace can cause issues for which are not liable only use our marketplace for safe trades
+secret signature is basically a secret purchase id generated to validate the purchase and allotting time to each buyer to make the transaction, it is a system remark with event tx without any purchase id tx will be ignored by the indexer every buy must have a valid purchase id
+
+### Purchase ID
+Here purchase id will contain (some value from the buyer address + sale price in unit planck )
+https://wiki.polkadot.network/docs/learn-DOT learn about polkadot units
+every purchase id is alloted for 1 minute so if you get one then for same item other will have to wait 1 minute to make the transaction and once time expires other can try and they will also have 1 minute
+
+
+### Plan 2.0 for Buy NFT
+Setup a Multisig wallet for safety and receive any any Dots containing buy request validate the tx and send those Dots to the seller once if there is any dot sent for purchasing the same nft which is already sold  return those with also charging fees incase of returning
+
 ### Buy NFT
-Buying NFT will delist and transfer NFT to a new owner who pay the desired listing sale price
+Buying NFT will delist and transfer NFT to a new owner who pays the desired listing sale price
+(balance transfer + remark + secret signature)
 ```JSON
 {
   "p": "dot-721", // string(required)
@@ -157,6 +172,45 @@ Buying NFT will delist and transfer NFT to a new owner who pay the desired listi
   "id": "20006173-1", // string(required): A created NFT collection ID
   "token_id": 0, // number(required): A minted NFT token ID.
   "price": 10, // here 10 is the sale price of that NFT
-  "sale_id": "20006176-1" // sale id is the list id (extrinsic id of list) which is expired after purchase so it determines that which list id is purchased and confirmed
+  "sale_id": "20006176-1", // sale id is the list id (extrinsic id of list) which is expired after purchase so it determines that which list id is purchased and confirmed
+  "purchase_id": "0x7672696679207369676e6174757265" // convert this to string to get the id, here this is the secrect purchase id which our protocol allots to each buy action
+}
+```
+
+### Offers
+Offering Dots for a NFT which may vary and seller can choose any desired offer which he wants to take, offers can be also made on unlisted NFTs because it's a choice for a seller, no can make a offer greater than their balance and any offer will get expired if Dot balance of the address who makes the offer is insufficient
+```JSON
+{
+  "p": "dot-721", // string(required)
+  "op": "offer", // string(required)
+  "id": "20006173-1", // string(required): A created NFT collection ID
+  "token_id": 0, // number(required): A minted NFT token ID.
+  "price": 10, // here 10 is the offer price for that NFT
+  "offerer": "1HzwKkNGv4gdWq4ds1C5k63u8hvmjC6ULneAaZbwUBZEauF" // address of the offerer
+}
+```
+
+### Accept Offer
+Here when a NFT Holder accepts a offers then there will be no any immediate transfer of that NFT it will just picking of offerer
+```JSON
+{
+  "p": "dot-721", // string(required)
+  "op": "accept_offer", // string(required)
+  "id": "20006173-1", // string(required): A created NFT collection ID
+  "token_id": 0, // number(required): A minted NFT token ID.
+  "id": "20006198-9" //here id means the extrinsic ID of that offer which is being picked by the accepter
+}
+```
+### Confirm Acceptance
+Here confirm acceptance means when a offer is accepted then the offerer can approve it and pay the price offered and get the NFT
+it contains utility batch all (balance transfer + remark)
+```JSON
+{
+  "p": "dot-721", // string(required)
+  "op": "confirm_accept", // string(required)
+  "id": "20006173-1", // string(required): A created NFT collection ID
+  "token_id": 0, // number(required): A minted NFT token ID.
+  "accept_id": "20006173-1", // here this is the extrinsic id of the Accept Offer
+  "offer_id": "20006178-2", // here this is the extrinsic id of the offer
 }
 ```
