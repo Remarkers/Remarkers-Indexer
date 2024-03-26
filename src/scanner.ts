@@ -36,6 +36,11 @@ class Scanner {
     return (
       await Promise.all(
         signedBlock.block.extrinsics.map(async (ex, ei) => {
+          if (!ex.isSigned) {
+            return;
+          }
+
+          // Check extrinsic is success
           if (
             ex.method.method === 'batchAll' &&
             ex.method.section === 'utility'
@@ -52,6 +57,18 @@ class Scanner {
               call0?.section !== 'system'
             ) {
               return;
+            }
+
+            // Check if call1 is a valid transferKeepAlive
+            let call1 = methodJson.args.calls[1];
+            if (
+              call1?.method !== 'transferKeepAlive' ||
+              call1?.section !== 'balances' ||
+              !call1?.args?.dest?.Id ||
+              call1.args.dest.Id.length < 40 ||
+              !call1?.args?.value
+            ) {
+              call1 = null;
             }
 
             const rawRemark = call0.args.remark as string;
@@ -74,6 +91,10 @@ class Scanner {
               extrinsicHash: ex.hash.toHex(),
               extrinsicIndex: ei,
               sender: ex.signer.toString(),
+              transfer: call1?.args?.value
+                ? BigInt((call1.args.value as string).replace(/,/g, ''))
+                : undefined,
+              transferTo: call1?.args?.dest?.Id,
               rawContent: rawRemark,
               content: content,
               timestamp: new Date(blockTime),

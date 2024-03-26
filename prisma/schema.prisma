@@ -17,6 +17,7 @@ enum OP {
   create
   addwl
   mint
+  approve
   send
   burn
 }
@@ -32,8 +33,14 @@ enum TokenStatus {
   burned
 }
 
+enum TransactionStatus {
+  success
+  fail
+}
+
 model Collection {
   id            BigInt    @id @default(autoincrement())
+  tx_id         BigInt
   collection_id String
   name          String
   description   String?
@@ -41,10 +48,9 @@ model Collection {
   issuer        String
   base_uri      String
   supply        BigInt?
-  royalty       Decimal?
   ms_mode       MintMode?
-  ms_start      BigInt?
-  ms_end        BigInt?
+  ms_start      Int?
+  ms_end        Int?
   ms_price      BigInt?
   ms_limit      Int?
   create_time   DateTime
@@ -56,6 +62,7 @@ model Collection {
 
 model Whitelist {
   id            BigInt   @id @default(autoincrement())
+  tx_id         BigInt
   collection_id String
   address       String
   create_time   DateTime
@@ -66,8 +73,9 @@ model Whitelist {
 
 model Token {
   id            BigInt      @id @default(autoincrement())
+  tx_id         BigInt
   collection_id String
-  token_id      BigInt
+  token_id      Int
   name          String
   description   String?
   image         String
@@ -80,16 +88,30 @@ model Token {
   @@map("token")
 }
 
+model Approval {
+  id            BigInt   @id @default(autoincrement())
+  tx_id         BigInt
+  collection_id String
+  token_id      Int
+  approved      String?
+  create_time   DateTime
+
+  @@index([collection_id, token_id])
+  @@map("approval")
+}
+
 model Transaction {
-  id              BigInt   @id @default(autoincrement())
+  id              BigInt            @id @default(autoincrement())
   op              OP
   content         String
   collection_id   String
-  token_id        BigInt?
-  block_number    BigInt
+  token_id        Int?
+  block_number    Int
   extrinsic_hash  String
   extrinsic_index Int
   sender          String
+  status          TransactionStatus
+  fail_reason     String?
   create_time     DateTime
 
   @@index([collection_id, token_id])

@@ -50,7 +50,6 @@ export const CreateContentSchema = BaseContentSchema.extend({
   issuer: z.string().refine(validSS58Address).optional(),
   base_uri: z.string().refine(validUri),
   supply: z.number().int().optional(),
-  royalty: z.number().optional(),
   mint_settings: z
     .object({
       mode: z.nativeEnum(MintMode).optional(),
@@ -77,6 +76,15 @@ export const MintContentSchema = BaseContentSchema.extend({
 });
 
 export type MintContent = z.infer<typeof MintContentSchema>;
+
+export const ApproveContentSchema = BaseContentSchema.extend({
+  id: z.string(),
+  token_id: z.number().int().min(0),
+  from: z.string().refine(validSS58Address),
+  to: z.string().refine(validSS58Address),
+});
+
+export type ApproveContent = z.infer<typeof ApproveContentSchema>;
 
 export const SendContentSchema = BaseContentSchema.extend({
   id: z.string(),
@@ -126,9 +134,11 @@ export function assertContent(content: string): Content {
     case OP.create:
       return CreateContentSchema.parse(temp);
     case OP.addwl:
-      return CreateContentSchema.parse(temp);
+      return AddwlContentSchema.parse(temp);
     case OP.mint:
       return MintContentSchema.parse(temp);
+    case OP.approve:
+      return ApproveContentSchema.parse(temp);
     case OP.send:
       return SendContentSchema.parse(temp);
     case OP.burn:
@@ -141,7 +151,22 @@ export type Inscription = {
   extrinsicHash: string;
   extrinsicIndex: number;
   sender: string;
+  transfer?: bigint; // Mint price transfer to NFT collection creator
+  transferTo?: string;
   rawContent: string;
   content: Content;
   timestamp: Date;
 };
+
+export type FailReason =
+  | 'invalid_metadata'
+  | 'collection_not_found'
+  | 'not_collection_owner'
+  | 'mint_not_started'
+  | 'mint_finished'
+  | 'mint_not_paid'
+  | 'mint_invalid_payee'
+  | 'mint_insufficient_amount'
+  | 'mint_exceed_limit'
+  | 'mint_missing_metadata'
+  | 'mint_not_eligible';

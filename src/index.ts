@@ -1,17 +1,40 @@
-import { Collection, PrismaClient } from '@prisma/client';
+import {
+  Collection,
+  Prisma,
+  PrismaClient,
+  Token,
+  Transaction,
+  TransactionStatus,
+} from '@prisma/client';
+import { DefaultArgs } from '@prisma/client/runtime/library';
 import dotenv from 'dotenv';
 import Scanner from './scanner.js';
 import {
   AddwlContent,
+  ApproveContent,
   CollectionMetadata,
   CollectionMetadataSchema,
   Config,
   CreateContent,
+  FailReason,
   Inscription,
   MintContent,
   SendContent,
   TokenMetadataSchema,
 } from './types.js';
+
+type PrismaTransactionClient = Omit<
+  PrismaClient<Prisma.PrismaClientOptions, never, DefaultArgs>,
+  '$connect' | '$disconnect' | '$on' | '$transaction' | '$use' | '$extends'
+>;
+
+type TransactionParams = {
+  inscription: Inscription;
+  collectionId: string;
+  tokenId?: number;
+  status: TransactionStatus;
+  failReason?: FailReason;
+};
 
 const prisma = new PrismaClient({
   transactionOptions: {
@@ -50,6 +73,10 @@ void (async function () {
             await handleMint(inscription);
             break;
           }
+          case 'approve': {
+            await handleApprove(inscription);
+            break;
+          }
           case 'send': {
             await handleSend(inscription);
             break;
@@ -74,20 +101,39 @@ void (async function () {
 
 async function handleCreate(inscription: Inscription) {
   const content = inscription.content as CreateContent;
-  const metadataText = await fetchMetadata(content.metadata);
+  const transactionParams = buildTransactionParams(inscription);
+  const { ok, metadataJson } = await fetchMetadata(content.metadata);
+  if (!ok) {
+    transactionParams.status = 'fail';
+    transactionParams.failReason = 'invalid_metadata';
+    console.warn(
+      `create operation failed: ${transactionParams.failReason}`,
+      JSON.stringify(inscription),
+    );
+    await submitTransaction(transactionParams);
+    return;
+  }
   let metadata: CollectionMetadata;
   try {
-    metadata = CollectionMetadataSchema.parse(metadataText);
+    metadata = CollectionMetadataSchema.parse(metadataJson);
   } catch (e) {
-    console.warn('create operation failed, invalid metadata', e);
+    transactionParams.status = 'fail';
+    transactionParams.failReason = 'invalid_metadata';
+    console.warn(
+      `create operation failed: ${transactionParams.failReason}`,
+      JSON.stringify(inscription),
+      e,
+    );
+    await submitTransaction(transactionParams);
     return;
   }
 
   // Save metadata to database and transaction
   const collectionId = buildCollectionId(inscription);
-  await prisma.$transaction([
-    prisma.collection.create({
+  await submitTransaction(transactionParams, async (tx, transaction) => {
+    await tx.collection.create({
       data: {
+        tx_id: transaction.id,
         collection_id: collectionId,
         name: metadata.name,
         description: metadata.description,
@@ -95,7 +141,6 @@ async function handleCreate(inscription: Inscription) {
         issuer: inscription.sender,
         base_uri: content.base_uri,
         supply: content.supply,
-        royalty: content.royalty,
         ms_mode: content?.mint_settings?.mode,
         ms_start: content?.mint_settings?.start,
         ms_end: content?.mint_settings?.end,
@@ -106,41 +151,66 @@ async function handleCreate(inscription: Inscription) {
         create_time: inscription.timestamp,
         update_time: inscription.timestamp,
       },
-    }),
-    createTransaction(inscription, collectionId),
-  ]);
+    });
+  });
 }
 
 async function handleAddwl(inscription: Inscription) {
   const content = inscription.content as AddwlContent;
+  const transactionParams = buildTransactionParams(inscription);
   const collection = await findAndCheckCollection(
-    buildCollectionId(inscription),
+    transactionParams.collectionId,
   );
   if (!collection) {
-    console.warn('addwl operation failed, collection not found');
+    transactionParams.status = 'fail';
+    transactionParams.failReason = 'collection_not_found';
+    console.warn(
+      `addwl operation failed: ${transactionParams.failReason}`,
+      JSON.stringify(inscription),
+    );
+    await submitTransaction(transactionParams);
+    return;
+  }
+
+  // check is creator
+  if (inscription.sender !== collection.issuer) {
+    transactionParams.status = 'fail';
+    transactionParams.failReason = 'not_collection_owner';
+    console.warn(
+      `addwl operation failed: ${transactionParams.failReason}`,
+      JSON.stringify(inscription),
+    );
+    await submitTransaction(transactionParams);
     return;
   }
 
   // save whitelist to database and transaction
-  await prisma.$transaction([
-    prisma.whitelist.createMany({
+  await submitTransaction(transactionParams, async (tx, transaction) => {
+    await tx.whitelist.createMany({
       data: content.data.map((address) => ({
+        tx_id: transaction.id,
         collection_id: collection.collection_id,
         address,
         create_time: inscription.timestamp,
       })),
-    }),
-    createTransaction(inscription, collection.collection_id),
-  ]);
+    });
+  });
 }
 
 async function handleMint(inscription: Inscription) {
   const content = inscription.content as MintContent;
+  const transactionParams = buildTransactionParams(inscription);
   const collection = await findAndCheckCollection(
-    buildCollectionId(inscription),
+    transactionParams.collectionId,
   );
   if (!collection) {
-    console.warn('mint operation failed, collection not found');
+    transactionParams.status = 'fail';
+    transactionParams.failReason = 'collection_not_found';
+    console.warn(
+      `mint operation failed: ${transactionParams.failReason}`,
+      JSON.stringify(inscription),
+    );
+    await submitTransaction(transactionParams);
     return;
   }
 
@@ -149,25 +219,61 @@ async function handleMint(inscription: Inscription) {
     (collection.ms_start ?? 0) > 0 &&
     inscription.blockNumber < collection.ms_start!
   ) {
+    transactionParams.status = 'fail';
+    transactionParams.failReason = 'mint_not_started';
     console.warn(
-      'mint operation failed, current block less than start block',
+      `mint operation failed: ${transactionParams.failReason}`,
       JSON.stringify(inscription),
     );
+    await submitTransaction(transactionParams);
     return;
   }
   if (
     (collection.ms_end ?? 0) > 0 &&
     inscription.blockNumber > collection.ms_end!
   ) {
+    transactionParams.status = 'fail';
+    transactionParams.failReason = 'mint_finished';
     console.warn(
-      'mint operation failed, current block greater than end block',
+      `mint operation failed: ${transactionParams.failReason}`,
       JSON.stringify(inscription),
     );
+    await submitTransaction(transactionParams);
     return;
   }
 
-  // check mint price
+  // check mint price is valid
   if ((collection.ms_price ?? 0n) > 0n) {
+    if (!inscription.transfer) {
+      transactionParams.status = 'fail';
+      transactionParams.failReason = 'mint_not_paid';
+      console.warn(
+        `mint operation failed: ${transactionParams.failReason}`,
+        JSON.stringify(inscription),
+      );
+      await submitTransaction(transactionParams);
+      return;
+    }
+    if (inscription.transferTo !== collection.issuer) {
+      transactionParams.status = 'fail';
+      transactionParams.failReason = 'mint_invalid_payee';
+      console.warn(
+        `mint operation failed: ${transactionParams.failReason}`,
+        JSON.stringify(inscription),
+      );
+      await submitTransaction(transactionParams);
+      return;
+    }
+    if (inscription.transfer < collection.ms_price!) {
+      transactionParams.status = 'fail';
+      transactionParams.failReason = 'mint_insufficient_amount';
+      console.warn(
+        `mint operation failed: ${transactionParams.failReason}`,
+        JSON.stringify(inscription),
+      );
+      await submitTransaction(transactionParams);
+      return;
+    }
   }
 
   // check user is exceed mint limit
@@ -177,20 +283,30 @@ async function handleMint(inscription: Inscription) {
         collection_id: collection.collection_id,
         op: 'mint',
         sender: inscription.sender,
+        status: 'success',
       },
     });
     if (mintedCount >= collection.ms_limit!) {
-      console.warn('mint operation failed, exceed mint limit');
+      transactionParams.status = 'fail';
+      transactionParams.failReason = 'mint_exceed_limit';
+      console.warn(
+        `mint operation failed: ${transactionParams.failReason}`,
+        JSON.stringify(inscription),
+      );
+      await submitTransaction(transactionParams);
       return;
     }
   }
 
   // When collection mint mode is creator, metadata is required
   if (collection.ms_mode === 'creator' && !content.metadata) {
+    transactionParams.status = 'fail';
+    transactionParams.failReason = 'mint_missing_metadata';
     console.warn(
-      'metadata is required for creator mint mode',
+      `mint operation failed: ${transactionParams.failReason}`,
       JSON.stringify(inscription),
     );
+    await submitTransaction(transactionParams);
     return;
   }
 
@@ -204,14 +320,26 @@ async function handleMint(inscription: Inscription) {
         },
       });
       if (!isEligible) {
-        console.warn('mint operation failed, not in whitelist');
+        transactionParams.status = 'fail';
+        transactionParams.failReason = 'mint_not_eligible';
+        console.warn(
+          `mint operation failed: ${transactionParams.failReason}`,
+          JSON.stringify(inscription),
+        );
+        await submitTransaction(transactionParams);
         return;
       }
       break;
     }
     case 'creator': {
       if (inscription.sender !== collection.issuer) {
-        console.warn('mint operation failed, not the issuer');
+        transactionParams.status = 'fail';
+        transactionParams.failReason = 'mint_not_eligible';
+        console.warn(
+          `mint operation failed: ${transactionParams.failReason}`,
+          JSON.stringify(inscription),
+        );
+        await submitTransaction(transactionParams);
         return;
       }
       break;
@@ -228,32 +356,79 @@ async function handleMint(inscription: Inscription) {
     },
   });
   // Get next token_id
-  const nextTokenId = lastToken ? lastToken.token_id + 1n : 0;
+  const nextTokenId = lastToken ? lastToken.token_id + 1 : 0;
   // Get token metadata uri
   const metadataUri =
     collection.ms_mode === 'creator'
       ? content.metadata!
       : `${collection.base_uri}${nextTokenId}.json`;
   // Fetch metadata
-  const metadataText = await fetchMetadata(metadataUri);
+  const { ok, metadataJson } = await fetchMetadata(metadataUri);
+  if (!ok) {
+    transactionParams.status = 'fail';
+    transactionParams.failReason = 'invalid_metadata';
+    console.warn(
+      `mint operation failed: ${transactionParams.failReason}`,
+      JSON.stringify(inscription),
+    );
+    await submitTransaction(transactionParams);
+    return;
+  }
   let metadata: CollectionMetadata;
   try {
-    metadata = TokenMetadataSchema.parse(metadataText);
+    metadata = TokenMetadataSchema.parse(metadataJson);
   } catch (e) {
-    console.warn('mint operation failed, invalid metadata', e);
+    transactionParams.status = 'fail';
+    transactionParams.failReason = 'invalid_metadata';
+    console.warn(
+      `mint operation failed: ${transactionParams.failReason}`,
+      JSON.stringify(inscription),
+    );
+    await submitTransaction(transactionParams);
     return;
   }
 
-  await prisma.token.create({
-    data: {
-      collection_id: collection.collection_id,
-      token_id: nextTokenId,
-      name: metadata.name,
-      description: metadata.description,
-      image: metadata.image,
-      owner: inscription.sender,
-      create_time: inscription.timestamp,
-      update_time: inscription.timestamp,
+  await submitTransaction(transactionParams, async (tx, transaction) => {
+    await tx.token.create({
+      data: {
+        tx_id: transaction.id,
+        collection_id: collection.collection_id,
+        token_id: nextTokenId,
+        name: metadata.name,
+        description: metadata.description,
+        image: metadata.image,
+        owner: inscription.sender,
+        create_time: inscription.timestamp,
+        update_time: inscription.timestamp,
+      },
+    });
+  });
+}
+
+async function handleApprove(inscription: Inscription) {
+  const content = inscription.content as ApproveContent;
+  const transactionParams = buildTransactionParams(inscription);
+  const collection = await findAndCheckCollection(
+    transactionParams.collectionId,
+  );
+  if (!collection) {
+    transactionParams.status = 'fail';
+    transactionParams.failReason = 'collection_not_found';
+    console.warn(
+      `approve operation failed: ${transactionParams.failReason}`,
+      JSON.stringify(inscription),
+    );
+    await submitTransaction(transactionParams);
+    return;
+  }
+
+  // Check token owner
+  const token = await prisma.token.findUnique({
+    where: {
+      collection_id_token_id: {
+        collection_id: collection.collection_id,
+        token_id: content.token_id,
+      },
     },
   });
 }
@@ -302,7 +477,10 @@ async function handleSend(inscription: Inscription) {
 
 async function handleBurn(inscription: Inscription) {}
 
-async function fetchMetadata(url: string): Promise<string> {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+async function fetchMetadata(
+  url: string,
+): Promise<{ ok: boolean; metadataJson: any }> {
   const u = new URL(url);
 
   const fetchUrl =
@@ -311,45 +489,76 @@ async function fetchMetadata(url: string): Promise<string> {
       : url;
 
   const response = await fetch(fetchUrl);
-  return await response.text();
+  const text = await response.text();
+  let json;
+  try {
+    json = JSON.parse(text);
+    return { ok: true, metadataJson: json };
+  } catch (e) {
+    return { ok: false, metadataJson: null };
+  }
 }
 
 function buildCollectionId(inscription: Inscription) {
   return `${inscription.blockNumber}-${inscription.extrinsicIndex}`;
 }
 
-function createTransaction(
-  inscription: Inscription,
-  collectionId: string,
-  tokenId: bigint | undefined = undefined,
-) {
-  return prisma.transaction.create({
-    data: {
-      op: inscription.content.op,
-      content: inscription.rawContent,
-      collection_id: collectionId,
-      token_id: tokenId,
-      block_number: inscription.blockNumber,
-      extrinsic_hash: inscription.extrinsicHash,
-      extrinsic_index: inscription.extrinsicIndex,
-      sender: inscription.sender,
-      create_time: inscription.timestamp,
-    },
+function buildTransactionParams(inscription: Inscription): TransactionParams {
+  return {
+    inscription,
+    collectionId: buildCollectionId(inscription),
+    status: 'success',
+  };
+}
+
+async function submitTransaction(
+  params: TransactionParams,
+  fn?: (tx: PrismaTransactionClient, transaction: Transaction) => Promise<void>,
+): Promise<void> {
+  const { inscription, collectionId, tokenId, status, failReason } = params;
+
+  return await prisma.$transaction(async (tx) => {
+    const transaction = await tx.transaction.create({
+      data: {
+        op: inscription.content.op,
+        content: inscription.rawContent,
+        collection_id: collectionId,
+        token_id: tokenId,
+        block_number: inscription.blockNumber,
+        extrinsic_hash: inscription.extrinsicHash,
+        extrinsic_index: inscription.extrinsicIndex,
+        sender: inscription.sender,
+        status,
+        fail_reason: failReason,
+        create_time: inscription.timestamp,
+      },
+    });
+    if (fn && status == 'success') {
+      await fn(tx, transaction);
+    }
   });
 }
 
 async function findAndCheckCollection(
   collectionId: string,
-): Promise<Collection | undefined> {
-  const collection = await prisma.collection.findUnique({
+): Promise<Collection | null> {
+  return await prisma.collection.findUnique({
     where: {
       collection_id: collectionId,
     },
   });
+}
 
-  if (!collection) {
-    return;
-  }
-
-  return collection;
+async function findAndCheckToken(
+  collectionId: string,
+  tokenId: number,
+): Promise<Token | null> {
+  return await prisma.token.findUnique({
+    where: {
+      collection_id_token_id: {
+        collection_id: collectionId,
+        token_id: tokenId,
+      },
+    },
+  });
 }

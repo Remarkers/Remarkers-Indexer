@@ -6,13 +6,15 @@ DOT-721 is a standard for non-fungible tokens (NFTs) on the Polkadot network.
 
 ## Global rules
 
-1. Polkadot DOT-721 operate by creating transactions of utility batchAll(calls) and are based on the parsing of the memo within the system remarkWithEvent(remark).
-2. The `remark` context must be a valid JSON string.
-3. All content is case insensitive, the indexer needs to convert the `remark` content to lowercase.
-4. When the data type does not match is considered invalid inscription.
-5. The `p` field is the standard identifier, it must be `DOT-721`.
-6. In addition to the fields specified by the operator, other fields in the `remark` context will not be recognized by the indexer. However, this transaction may still be a valid inscription operation and can be used to extend the protocol's usage in certain scenarios.
-7. Only the first call in a batchAll(calls) is indexed, if the first call does not follow the specification, the entire transaction is considered invalid.
+1. Polkadot `DOT-721` operate by creating transactions of utility batchAll(calls) and are based on the parsing of the memo within the system remarkWithEvent(remark).
+2. The `Extrinsic` must contain a `system(ExtrinsicSuccess)` event.
+3. The `remark` context must be a valid JSON string.
+4. All content is case insensitive, the indexer needs to convert the `remark` content to lowercase.
+5. When the data type does not match is considered invalid inscription.
+6. The `p` field is the standard identifier, it must be `DOT-721`.
+7. In addition to the fields specified by the operator, other fields in the `remark` context will not be recognized by the indexer. However, this transaction may still be a valid inscription operation and can be used to extend the protocol's usage in certain scenarios.
+8. Only the first call in a batchAll(calls) is indexed, if the first call does not follow the specification, the entire transaction is considered invalid.
+9. If mint price is set, the second call in a batchAll(calls) must be a transfer_keep_alive call to the creator address, the amount must be equal or greater than the mint price.
 
 ## NFT Collection Metadata JSON Schema
 
@@ -104,7 +106,7 @@ Mint a new NFT, can be only minted by the creator if specified or public mint or
 }
 ```
 
-When mint successfully, the indexer will create a id for the NFT, incremental from 0, one by one, such as `0`, `1`, `2`, `3`, etc.
+When mint successfully, the indexer will create a id for the NFT, incremental from 0, one by one, such as `0`, `1`, `2` until the supply limit.
 
 ### Approve
 
@@ -135,6 +137,8 @@ Send an NFT this will transfer the nft from the current owner to the a new owner
 }
 
 ```
+
+When send successfully, indexer will clear the approved address for the NFT automatically.
 
 ### Burn
 
