@@ -59,7 +59,6 @@ Create a new NFT collection.
   "issuer": "1HzwKkNGv4gdWq4ds1C5k63u8hvmjC6ULneAaZbwUBZEauF", // string(optional): issuer address, if not set, it is the same as the sender, the account format need follow the SS58 account format
   "base_uri": "ipfs://bafybeicf7md3hsba3m2thhhnrfyct4dyu36bysw7ol7lw5agopf5vbxeqe", // string(required): base uri for the nft content, it can be IPFS URI or HTTP(s) URL, it will be used to generate the nft uri such as `${base_uri}${token_id}.json`
   "supply": 1000, // number(optional): NFT total supply, if not set or <= 0, it can be minted without limit
-  "royalty": 10, // number(optional): trading fee to the creator, if not set or <= 0, it can be traded without fee
   "mint_settings": {
     // object(optional): Mint settings
     "mode": "public", // string(optional): mint mode, support  public | whitelist | creator, default is public
