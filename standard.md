@@ -28,6 +28,25 @@ The metadata of the NFT collection is a JSON object, which must contain the foll
 }
 ```
 
+About collection name, indexers need to follow the specification:
+
+1. The collection name need do trim, remove the leading and trailing spaces.
+2. Replace spaces in the collection name with underscores and convert them to lowercase as a globally unique identifier to avoid forgery and fraud.
+
+Unique identifier example:
+
+```js
+// collection 1
+'Polkadot Punks'.trim().replace(/\s+/g, '_').toLowerCase();
+('polkadot_punks');
+
+// collection 2 will be ignored
+'Polkadot   Punks  '.trim().replace(/\s+/g, '_').toLowerCase();
+('polkadot_punks');
+```
+
+If the collection unique identifier is the same, the indexer will ignore the operation.
+
 ## NFT Token Metadata JSON Schema
 
 The metadata of the NFT is a JSON object, which must contain the following fields:

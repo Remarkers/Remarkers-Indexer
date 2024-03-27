@@ -159,6 +159,7 @@ export type Inscription = {
 
 export type FailReason =
   | 'invalid_metadata'
+  | 'collection_duplicate'
   | 'collection_not_found'
   | 'not_collection_owner'
   | 'mint_not_started'

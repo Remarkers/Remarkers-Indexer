@@ -145,13 +145,32 @@ async function handleCreate(inscription: Inscription) {
     return;
   }
 
+  // Check if collection is unique
+  const identifier = metadata.name.trim().replace(/\s+/g, '_').toLowerCase();
+  const collection = await prisma.collection.findUnique({
+    where: {
+      identifier: identifier,
+    },
+  });
+  if (collection) {
+    transactionParams.status = 'fail';
+    transactionParams.failReason = 'collection_duplicate';
+    console.warn(
+      `create operation failed: ${transactionParams.failReason}`,
+      JSON.stringify(inscription),
+    );
+    await submitTransaction(transactionParams);
+    return;
+  }
+
   // Save metadata to database and transaction
   const collectionId = buildCollectionId(inscription);
   await submitTransaction(transactionParams, async (tx) => {
     await tx.collection.create({
       data: {
         collection_id: collectionId,
-        name: metadata.name,
+        name: metadata.name.trim(),
+        identifier,
         description: metadata.description,
         image: metadata.image,
         issuer: inscription.sender,
