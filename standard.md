@@ -76,7 +76,7 @@ Create a new NFT collection.
 {
   "p": "dot-721", // string(required)
   "op": "create", // string(required)
-  "metadata": "ipfs://QmXJUEVyrC6wUMfgHMe89Qv93pR3LazrvQMCPc9vjCSrL5", // string(required): metadata URI, follow the NFT Collection Metadata JSON Schema
+  "metadata": "ipfs://bafkreihgiabjptvuog3udu5ccriyyux7to6sx4bcqltg3rneuk3qvkmppq", // string(required): metadata URI, follow the NFT Collection Metadata JSON Schema
   "issuer": "1HzwKkNGv4gdWq4ds1C5k63u8hvmjC6ULneAaZbwUBZEauF", // string(optional): issuer address, if not set, it is the same as the sender, the account format need follow the SS58 account format
   "base_uri": "ipfs://bafybeicf7md3hsba3m2thhhnrfyct4dyu36bysw7ol7lw5agopf5vbxeqe", // string(required): base uri for the nft content, it can be IPFS URI or HTTP(s) URL, it will be used to generate the nft uri such as `${base_uri}${token_id}.json`
   "supply": 1000, // number(optional): NFT total supply, if not set or <= 0, it can be minted without limit
