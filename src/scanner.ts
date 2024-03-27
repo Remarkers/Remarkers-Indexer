@@ -143,7 +143,7 @@ class Scanner {
           `scanning blocks ${current} to ${current + blocksToScan - 1}: head=${headBlockNumber}, progress=${(
             (current / headBlockNumber) *
             100
-          ).toFixed(2)}%, used=${used.toFixed(2)}s, remaining=${(
+          ).toFixed(4)}%, used=${used.toFixed(2)}s, remaining=${(
             (used / scaned) *
             (headBlockNumber - current)
           ).toFixed(2)}s, speed=${(scaned / used).toFixed(2)} blocks/s`,
