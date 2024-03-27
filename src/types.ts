@@ -168,6 +168,7 @@ export type FailReason =
   | 'mint_not_paid'
   | 'mint_invalid_payee'
   | 'mint_insufficient_amount'
+  | 'mint_exceed_supply'
   | 'mint_exceed_limit'
   | 'mint_missing_metadata'
   | 'mint_not_eligible'

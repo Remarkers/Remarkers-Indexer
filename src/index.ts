@@ -312,6 +312,25 @@ async function handleMint(inscription: Inscription) {
     }
   }
 
+  // check if exceed supply
+  if ((collection.supply ?? 0) > 0) {
+    const tokenCount = await prisma.token.count({
+      where: {
+        collection_id: collection.collection_id,
+      },
+    });
+    if (tokenCount >= collection.supply!) {
+      transactionParams.status = 'fail';
+      transactionParams.failReason = 'mint_exceed_supply';
+      console.warn(
+        `mint operation failed: ${transactionParams.failReason}`,
+        JSON.stringify(inscription),
+      );
+      await submitTransaction(transactionParams);
+      return;
+    }
+  }
+
   // check user is exceed mint limit
   if ((collection.ms_limit ?? 0) > 0) {
     const mintedCount = await prisma.transaction.count({
