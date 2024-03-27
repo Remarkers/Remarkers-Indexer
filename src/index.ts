@@ -5,7 +5,10 @@ import {
   Token,
   TransactionStatus,
 } from '@prisma/client';
-import { DefaultArgs } from '@prisma/client/runtime/library';
+import {
+  DefaultArgs,
+  PrismaClientKnownRequestError,
+} from '@prisma/client/runtime/library';
 import dotenv from 'dotenv';
 import Scanner from './scanner.js';
 import {
@@ -557,21 +560,30 @@ async function submitTransaction(
   const { inscription, collectionId, tokenId, status, failReason } = params;
 
   return await prisma.$transaction(async (tx) => {
-    await tx.transaction.create({
-      data: {
-        op: inscription.content.op,
-        content: inscription.rawContent,
-        collection_id: collectionId,
-        token_id: tokenId,
-        block_number: inscription.blockNumber,
-        extrinsic_hash: inscription.extrinsicHash,
-        extrinsic_index: inscription.extrinsicIndex,
-        sender: inscription.sender,
-        status,
-        fail_reason: failReason,
-        create_time: inscription.timestamp,
-      },
-    });
+    try {
+      await tx.transaction.create({
+        data: {
+          op: inscription.content.op,
+          content: inscription.rawContent,
+          collection_id: collectionId,
+          token_id: tokenId,
+          block_number: inscription.blockNumber,
+          extrinsic_hash: inscription.extrinsicHash,
+          extrinsic_index: inscription.extrinsicIndex,
+          sender: inscription.sender,
+          status,
+          fail_reason: failReason,
+          create_time: inscription.timestamp,
+        },
+      });
+    } catch (e) {
+      // Ignore duplicate transaction error
+      if (e instanceof PrismaClientKnownRequestError && e.code === 'P2002') {
+        return;
+      }
+      throw e;
+    }
+
     if (fn && status == 'success') {
       await fn(tx);
     }
