@@ -186,7 +186,7 @@ async function handleCreate(inscription: Inscription) {
         identifier,
         description: metadata.description,
         image: metadata.image,
-        issuer: inscription.sender,
+        issuer: content.issuer ?? inscription.sender,
         base_uri: content.base_uri,
         supply: content.supply,
         ms_mode: content?.mint_settings?.mode,
