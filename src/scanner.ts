@@ -1,4 +1,5 @@
 import { ApiPromise, WsProvider } from '@polkadot/api';
+import { ApiDecoration } from '@polkadot/api/types';
 import { Config, Content, Inscription, assertContent } from './types.js';
 
 class Scanner {
@@ -32,11 +33,17 @@ class Scanner {
     if (!signedBlock.block.extrinsics.length) {
       return [];
     }
-    let blockTime: number | undefined;
+    const apiAt = await this.api.at(blockHash);
+    const isSuccess = await this.isSuccessPredicate(apiAt);
+    const blockTime = await this.getBlockTime(apiAt);
     return (
       await Promise.all(
-        signedBlock.block.extrinsics.map(async (ex, ei) => {
+        signedBlock.block.extrinsics.map((ex, ei) => {
           if (!ex.isSigned) {
+            return;
+          }
+
+          if (!isSuccess(ei)) {
             return;
           }
 
@@ -82,10 +89,6 @@ class Scanner {
               return;
             }
 
-            if (!blockTime) {
-              blockTime = await this.getBlockTime(blockHash);
-            }
-
             return {
               blockNumber: number,
               extrinsicHash: ex.hash.toHex(),
@@ -102,9 +105,7 @@ class Scanner {
           }
         }),
       )
-    )
-      .filter((e) => e)
-      .map((e) => e as Inscription);
+    ).filter((e) => e) as Inscription[];
   }
 
   // eslint-disable-next-line no-unused-vars
@@ -157,9 +158,24 @@ class Scanner {
     }
   }
 
-  private async getBlockTime(blockHash: Uint8Array | string): Promise<number> {
-    const apiAt = await this.api.at(blockHash);
+  private async getBlockTime(apiAt: ApiDecoration<'promise'>): Promise<number> {
     return parseInt((await apiAt.query.timestamp.now()).toString());
+  }
+
+  private async isSuccessPredicate(
+    apiAt: ApiDecoration<'promise'>,
+  ): Promise<(extrinsicIndex: number) => boolean> {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const events = (await apiAt.query.system.events()) as unknown as any[];
+    return (extrinsicIndex: number) =>
+      events
+        .filter(
+          ({ phase }) =>
+            // eslint-disable-next-line @typescript-eslint/no-unsafe-call
+            phase.isApplyExtrinsic && phase.asApplyExtrinsic.eq(extrinsicIndex),
+        )
+        // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
+        .some(({ event }) => this.api.events.system.ExtrinsicSuccess.is(event));
   }
 }
 

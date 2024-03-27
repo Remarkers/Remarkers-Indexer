@@ -33,6 +33,11 @@ enum TokenStatus {
   burned
 }
 
+enum ApprovalStatus {
+  normal
+  revoked
+}
+
 enum TransactionStatus {
   success
   fail
@@ -40,7 +45,6 @@ enum TransactionStatus {
 
 model Collection {
   id            BigInt    @id @default(autoincrement())
-  tx_id         BigInt
   collection_id String
   name          String
   description   String?
@@ -62,7 +66,6 @@ model Collection {
 
 model Whitelist {
   id            BigInt   @id @default(autoincrement())
-  tx_id         BigInt
   collection_id String
   address       String
   create_time   DateTime
@@ -73,7 +76,6 @@ model Whitelist {
 
 model Token {
   id            BigInt      @id @default(autoincrement())
-  tx_id         BigInt
   collection_id String
   token_id      Int
   name          String
@@ -89,12 +91,13 @@ model Token {
 }
 
 model Approval {
-  id            BigInt   @id @default(autoincrement())
-  tx_id         BigInt
+  id            BigInt         @id @default(autoincrement())
   collection_id String
   token_id      Int
   approved      String?
+  status        ApprovalStatus
   create_time   DateTime
+  update_time   DateTime
 
   @@index([collection_id, token_id])
   @@map("approval")
@@ -114,6 +117,7 @@ model Transaction {
   fail_reason     String?
   create_time     DateTime
 
+  @@unique([block_number, extrinsic_index])
   @@index([collection_id, token_id])
   @@map("transaction")
 }

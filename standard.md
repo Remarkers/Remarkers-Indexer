@@ -7,7 +7,7 @@ DOT-721 is a standard for non-fungible tokens (NFTs) on the Polkadot network.
 ## Global rules
 
 1. Polkadot `DOT-721` operate by creating transactions of utility batchAll(calls) and are based on the parsing of the memo within the system remarkWithEvent(remark).
-2. The `Extrinsic` must contain a `system(ExtrinsicSuccess)` event.
+2. The `Extrinsic` must be successful, i.e. the event contains a `system(ExtrinsicSuccess)` event.
 3. The `remark` context must be a valid JSON string.
 4. All content is case insensitive, the indexer needs to convert the `remark` content to lowercase.
 5. When the data type does not match is considered invalid inscription.

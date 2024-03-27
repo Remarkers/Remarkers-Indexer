@@ -79,9 +79,8 @@ export type MintContent = z.infer<typeof MintContentSchema>;
 
 export const ApproveContentSchema = BaseContentSchema.extend({
   id: z.string(),
+  approved: z.string().refine(validSS58Address),
   token_id: z.number().int().min(0),
-  from: z.string().refine(validSS58Address),
-  to: z.string().refine(validSS58Address),
 });
 
 export type ApproveContent = z.infer<typeof ApproveContentSchema>;
@@ -169,4 +168,7 @@ export type FailReason =
   | 'mint_insufficient_amount'
   | 'mint_exceed_limit'
   | 'mint_missing_metadata'
-  | 'mint_not_eligible';
+  | 'mint_not_eligible'
+  | 'token_not_found'
+  | 'token_burned'
+  | 'not_token_owner';
