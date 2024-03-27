@@ -57,6 +57,15 @@ const config: Config = {
 
 void (async function () {
   // Query last block number from database
+  const lastBlock = await prisma.transaction.findFirst({
+    orderBy: {
+      id: 'desc',
+    },
+  });
+  config.scanStartBlock = Math.max(
+    lastBlock?.block_number ?? 0,
+    config.scanStartBlock,
+  );
 
   const scanner = new Scanner(config);
 
