@@ -48,7 +48,7 @@ export type BaseContent = z.infer<typeof BaseContentSchema>;
 export const CreateContentSchema = BaseContentSchema.extend({
   metadata: z.string().refine(validUri),
   issuer: z.string().refine(validSS58Address).optional(),
-  base_uri: z.string().refine(validUri),
+  base_uri: z.string().refine(validUri).optional(),
   supply: z.number().int().optional(),
   mint_settings: z
     .object({
@@ -159,6 +159,7 @@ export type Inscription = {
 
 export type FailReason =
   | 'invalid_metadata'
+  | 'missing_base_uri'
   | 'collection_duplicate'
   | 'collection_not_found'
   | 'not_collection_owner'

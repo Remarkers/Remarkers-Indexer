@@ -51,7 +51,7 @@ model Collection {
   description   String?
   image         String
   issuer        String
-  base_uri      String
+  base_uri      String?
   supply        BigInt?
   ms_mode       MintMode?
   ms_start      Int?
@@ -83,6 +83,7 @@ model Token {
   name          String
   description   String?
   image         String
+  attributes    Json?
   owner         String
   status        TokenStatus @default(normal)
   create_time   DateTime

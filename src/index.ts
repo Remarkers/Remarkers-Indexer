@@ -23,6 +23,7 @@ import {
   Inscription,
   MintContent,
   SendContent,
+  TokenMetadata,
   TokenMetadataSchema,
 } from './types.js';
 
@@ -155,6 +156,18 @@ async function handleCreate(inscription: Inscription) {
   if (collection) {
     transactionParams.status = 'fail';
     transactionParams.failReason = 'collection_duplicate';
+    console.warn(
+      `create operation failed: ${transactionParams.failReason}`,
+      JSON.stringify(inscription),
+    );
+    await submitTransaction(transactionParams);
+    return;
+  }
+
+  // Valify base_uri, only when mint mode is creator it can be empty
+  if (!content.base_uri && content.mint_settings?.mode !== 'creator') {
+    transactionParams.status = 'fail';
+    transactionParams.failReason = 'missing_base_uri';
     console.warn(
       `create operation failed: ${transactionParams.failReason}`,
       JSON.stringify(inscription),
@@ -397,7 +410,7 @@ async function handleMint(inscription: Inscription) {
     await submitTransaction(transactionParams);
     return;
   }
-  let metadata: CollectionMetadata;
+  let metadata: TokenMetadata;
   try {
     metadata = TokenMetadataSchema.parse(metadataJson);
   } catch (e) {
@@ -419,6 +432,7 @@ async function handleMint(inscription: Inscription) {
         name: metadata.name,
         description: metadata.description,
         image: metadata.image,
+        attributes: metadata.attributes,
         owner: inscription.sender,
         create_time: inscription.timestamp,
         update_time: inscription.timestamp,
@@ -551,9 +565,7 @@ async function fetchMetadata(
   const u = new URL(url);
 
   const fetchUrl =
-    u.protocol === 'ipfs:'
-      ? `${config.ipfsGateway}${u.pathname.replace('//', '')}`
-      : url;
+    u.protocol === 'ipfs:' ? `${config.ipfsGateway}${u.hostname}` : url;
 
   const response = await fetch(fetchUrl);
   const text = await response.text();
