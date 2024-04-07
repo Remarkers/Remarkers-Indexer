@@ -31,6 +31,5 @@ npx prisma migrate dev --name init
 3. Run the server
 
 ```bash
-pnpm build
-node build/src/index.js
+pnpm build && node build/src/indexer.js
 ```
