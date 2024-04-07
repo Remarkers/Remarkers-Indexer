@@ -35,6 +35,7 @@
     "clean": "rimraf build && rimraf dist",
     "build": "swc ./src -d build",
     "build:watch": "swc ./src -d build -w",
+    "build:dts": "swc ./src -d build && tsc --declaration --emitDeclarationOnly --outDir build/src",
     "lint": "eslint ./src --ext .ts",
     "lint:fix": "eslint ./src --ext .ts --fix",
     "prettier": "prettier '**/*.{ts,json,md}'",
