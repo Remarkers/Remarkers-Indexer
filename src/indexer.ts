@@ -1,3 +1,4 @@
+import { decodeAddress, encodeAddress } from '@polkadot/util-crypto';
 import {
   Collection,
   Prisma,
@@ -40,7 +41,6 @@ type TransactionParams = {
   failReason?: FailReason;
 };
 
-
 export async function indexer(config: Config) {
   const prisma = new PrismaClient({
     transactionOptions: {
@@ -63,7 +63,7 @@ export async function indexer(config: Config) {
 
   await scanner.init();
   await scanner.scan(async (blockInscriptions) => {
-    for (let i = 0; i < blockInscriptions.length;) {
+    for (let i = 0; i < blockInscriptions.length; ) {
       const inscription = blockInscriptions[i];
       try {
         switch (inscription.content.op) {
@@ -104,9 +104,16 @@ export async function indexer(config: Config) {
     }
   });
 
-
   async function handleCreate(inscription: Inscription) {
     const content = inscription.content as CreateContent;
+    if (content.issuer && !validAddressPrefix(content.issuer)) {
+      console.warn(
+        'create operation failed: invalid address format',
+        JSON.stringify(inscription),
+      );
+      return;
+    }
+
     const transactionParams = buildTransactionParams(
       inscription,
       buildCollectionId(inscription),
@@ -196,6 +203,14 @@ export async function indexer(config: Config) {
 
   async function handleAddwl(inscription: Inscription) {
     const content = inscription.content as AddwlContent;
+    if (!content.data.every(validAddressPrefix)) {
+      console.warn(
+        'addwl operation failed: invalid address format',
+        JSON.stringify(inscription),
+      );
+      return;
+    }
+
     const transactionParams = buildTransactionParams(inscription, content.id);
     const { collection, failReason } = await findCollectionAndCheckOwner(
       transactionParams.collectionId,
@@ -453,6 +468,14 @@ export async function indexer(config: Config) {
 
   async function handleApprove(inscription: Inscription) {
     const content = inscription.content as ApproveContent;
+    if (!validAddressPrefix(content.approved)) {
+      console.warn(
+        'approve operation failed: invalid address format',
+        JSON.stringify(inscription),
+      );
+      return;
+    }
+
     const transactionParams = buildTransactionParams(inscription, content.id);
     const { token, failReason } = await findTokenAndCheckOwner(
       transactionParams.collectionId,
@@ -487,6 +510,14 @@ export async function indexer(config: Config) {
 
   async function handleSend(inscription: Inscription) {
     const content = inscription.content as SendContent;
+    if (!validAddressPrefix(content.recipient)) {
+      console.warn(
+        'send operation failed: invalid address format',
+        JSON.stringify(inscription),
+      );
+      return;
+    }
+
     const transactionParams = buildTransactionParams(inscription, content.id);
     const { token, failReason } = await findTokenAndCheckSendable(
       transactionParams.collectionId,
@@ -737,7 +768,19 @@ export async function indexer(config: Config) {
 
     return result;
   }
-};
+
+  function validAddressPrefix(value: string): boolean {
+    try {
+      const targetAddress = encodeAddress(
+        decodeAddress(value),
+        config.chainSs58Prefix,
+      );
+      return targetAddress === value;
+    } catch {
+      return false;
+    }
+  }
+}
 
 void (async function () {
   dotenv.config();

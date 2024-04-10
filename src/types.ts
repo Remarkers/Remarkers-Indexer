@@ -1,17 +1,27 @@
-import { decodeAddress, encodeAddress, isAddress } from '@polkadot/util-crypto';
-import { MintMode, OP } from '@prisma/client';
-import dotenv from 'dotenv';
+import { SubmittableExtrinsic } from '@polkadot/api/types';
+import { Extrinsic } from '@polkadot/types/interfaces';
+import { isAddress } from '@polkadot/util-crypto';
 import z from 'zod';
 
-dotenv.config();
+export type MintMode = 'public' | 'whitelist' | 'creator';
+const zodMintMode: z.ZodType<MintMode> = z.enum([
+  'public',
+  'whitelist',
+  'creator',
+]);
+
+export type OP = 'create' | 'addwl' | 'mint' | 'approve' | 'send' | 'burn';
+const zodOP: z.ZodType<OP> = z.enum([
+  'create',
+  'addwl',
+  'mint',
+  'approve',
+  'send',
+  'burn',
+]);
 
 function validSS58Address(value: string): boolean {
-  if (!isAddress(value)) {
-    return false;
-  }
-  const ss58Prefix = parseInt(process.env.CHAIN_SS58_PREFIX!);
-  const targetAddress = encodeAddress(decodeAddress(value), ss58Prefix);
-  return targetAddress === value;
+  return isAddress(value);
 }
 
 function validBigInt(value: string): boolean {
@@ -40,9 +50,8 @@ export type Config = {
 
 export const BaseContentSchema = z.object({
   p: z.string().refine((v) => v === 'dot-721'),
-  op: z.nativeEnum(OP),
+  op: zodOP,
 });
-
 export type BaseContent = z.infer<typeof BaseContentSchema>;
 
 export const CreateContentSchema = BaseContentSchema.extend({
@@ -52,7 +61,7 @@ export const CreateContentSchema = BaseContentSchema.extend({
   supply: z.number().int().optional(),
   mint_settings: z
     .object({
-      mode: z.nativeEnum(MintMode).optional(),
+      mode: zodMintMode.optional(),
       start: z.number().int().optional(),
       end: z.number().int().optional(),
       price: z.string().refine(validBigInt).optional(),
@@ -60,21 +69,18 @@ export const CreateContentSchema = BaseContentSchema.extend({
     })
     .optional(),
 });
-
 export type CreateContent = z.infer<typeof CreateContentSchema>;
 
 export const AddwlContentSchema = BaseContentSchema.extend({
   id: z.string(),
-  data: z.array(z.string().refine(validSS58Address)),
+  data: z.array(z.string().refine(validSS58Address)).min(1),
 });
-
 export type AddwlContent = z.infer<typeof AddwlContentSchema>;
 
 export const MintContentSchema = BaseContentSchema.extend({
   id: z.string(),
   metadata: z.string().refine(validUri).optional(),
 });
-
 export type MintContent = z.infer<typeof MintContentSchema>;
 
 export const ApproveContentSchema = BaseContentSchema.extend({
@@ -82,7 +88,6 @@ export const ApproveContentSchema = BaseContentSchema.extend({
   approved: z.string().refine(validSS58Address),
   token_id: z.number().int().min(0),
 });
-
 export type ApproveContent = z.infer<typeof ApproveContentSchema>;
 
 export const SendContentSchema = BaseContentSchema.extend({
@@ -90,14 +95,12 @@ export const SendContentSchema = BaseContentSchema.extend({
   token_id: z.number().int().min(0),
   recipient: z.string().refine(validSS58Address),
 });
-
 export type SendContent = z.infer<typeof SendContentSchema>;
 
 export const BurnContentSchema = BaseContentSchema.extend({
   id: z.string(),
   token_id: z.number().int().min(0),
 });
-
 export type BurnContent = z.infer<typeof BurnContentSchema>;
 
 export type Content =
@@ -130,17 +133,17 @@ export function assertContent(content: string): Content {
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const temp = JSON.parse(content);
   switch (temp.op as OP) {
-    case OP.create:
+    case 'create':
       return CreateContentSchema.parse(temp);
-    case OP.addwl:
+    case 'addwl':
       return AddwlContentSchema.parse(temp);
-    case OP.mint:
+    case 'mint':
       return MintContentSchema.parse(temp);
-    case OP.approve:
+    case 'approve':
       return ApproveContentSchema.parse(temp);
-    case OP.send:
+    case 'send':
       return SendContentSchema.parse(temp);
-    case OP.burn:
+    case 'burn':
       return BurnContentSchema.parse(temp);
   }
 }
@@ -175,3 +178,59 @@ export type FailReason =
   | 'token_not_found'
   | 'token_burned'
   | 'not_token_owner';
+
+export function parseInscription(
+  ex: Extrinsic | SubmittableExtrinsic<'promise'>,
+): Inscription | undefined {
+  if (!ex.isSigned) {
+    return;
+  }
+
+  // Check if it is a batchAll
+  if (ex.method.method !== 'batchAll' || ex.method.section !== 'utility') {
+    return;
+  }
+
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const methodJson = ex.method.toHuman() as any;
+  if (!methodJson?.args?.calls || !methodJson.args.calls.length) {
+    return;
+  }
+
+  const call0 = methodJson.args.calls[0];
+  if (call0?.method !== 'remarkWithEvent' || call0?.section !== 'system') {
+    return;
+  }
+
+  // Check if call1 is a valid transferKeepAlive
+  let call1 = methodJson.args.calls[1];
+  if (
+    call1?.method !== 'transferKeepAlive' ||
+    call1?.section !== 'balances' ||
+    !call1?.args?.dest?.Id ||
+    !call1?.args?.value
+  ) {
+    call1 = null;
+  }
+
+  const rawRemark = call0.args.remark as string;
+  const remark = rawRemark.toLowerCase();
+  // Try to parse and validate the content
+  let content: Content;
+  try {
+    content = assertContent(remark);
+  } catch (e) {
+    throw new Error(`Failed to parse content: ${rawRemark}`);
+  }
+
+  return {
+    extrinsicHash: ex.hash.toHex(),
+    sender: ex.signer.toString(),
+    transfer: call1?.args?.value
+      ? BigInt((call1.args.value as string).replace(/,/g, ''))
+      : undefined,
+    transferTo: call1?.args?.dest?.Id,
+    rawContent: rawRemark,
+    content: content,
+  } as Inscription;
+}

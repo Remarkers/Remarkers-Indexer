@@ -1,7 +1,7 @@
 import { ApiPromise, WsProvider } from '@polkadot/api';
-import { ApiDecoration, SubmittableExtrinsic } from '@polkadot/api/types';
+import { ApiDecoration } from '@polkadot/api/types';
 import { Extrinsic } from '@polkadot/types/interfaces';
-import { Config, Content, Inscription, assertContent } from './types.js';
+import { Config, Inscription, parseInscription } from './types.js';
 
 class Scanner {
   config: Config;
@@ -54,9 +54,9 @@ class Scanner {
             inscription.timestamp = new Date(blockTime);
             return inscription;
           } catch (e) {
-            console.warn("Failed to parse inscription", e);
+            console.warn('Failed to parse inscription', e);
           }
-        })
+        }),
       )
     ).filter((e) => e) as Inscription[];
   }
@@ -131,67 +131,4 @@ class Scanner {
   }
 }
 
-function parseInscription(ex: Extrinsic | SubmittableExtrinsic<"promise">): Inscription | undefined {
-  if (!ex.isSigned) {
-    return;
-  }
-
-  // Check if it is a batchAll
-  if (
-    ex.method.method !== 'batchAll' ||
-    ex.method.section !== 'utility'
-  ) {
-    return;
-  }
-
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const methodJson = ex.method.toHuman() as any;
-  if (!methodJson?.args?.calls || !methodJson.args.calls.length) {
-    return;
-  }
-
-  const call0 = methodJson.args.calls[0];
-  if (
-    call0?.method !== 'remarkWithEvent' ||
-    call0?.section !== 'system'
-  ) {
-    return;
-  }
-
-  // Check if call1 is a valid transferKeepAlive
-  let call1 = methodJson.args.calls[1];
-  if (
-    call1?.method !== 'transferKeepAlive' ||
-    call1?.section !== 'balances' ||
-    !call1?.args?.dest?.Id ||
-    call1.args.dest.Id.length < 40 ||
-    !call1?.args?.value
-  ) {
-    call1 = null;
-  }
-
-  const rawRemark = call0.args.remark as string;
-  const remark = rawRemark.toLowerCase();
-  // Try to parse and validate the content
-  let content: Content;
-  try {
-    content = assertContent(remark);
-  } catch (e) {
-    throw new Error(`Failed to parse content: ${rawRemark}`);
-  }
-
-  return {
-    extrinsicHash: ex.hash.toHex(),
-    sender: ex.signer.toString(),
-    transfer: call1?.args?.value
-      ? BigInt((call1.args.value as string).replace(/,/g, ''))
-      : undefined,
-    transferTo: call1?.args?.dest?.Id,
-    rawContent: rawRemark,
-    content: content,
-  } as Inscription;
-}
-
 export default Scanner;
-export { parseInscription };
-
