@@ -468,14 +468,6 @@ export async function indexer(config: Config) {
 
   async function handleApprove(inscription: Inscription) {
     const content = inscription.content as ApproveContent;
-    if (!validAddressPrefix(content.approved)) {
-      console.warn(
-        'approve operation failed: invalid address format',
-        JSON.stringify(inscription),
-      );
-      return;
-    }
-
     const transactionParams = buildTransactionParams(inscription, content.id);
     const { token, failReason } = await findTokenAndCheckOwner(
       transactionParams.collectionId,
@@ -493,19 +485,43 @@ export async function indexer(config: Config) {
       return;
     }
 
-    // Save approval to database and transaction
-    await submitTransaction(transactionParams, async (tx) => {
-      await tx.approval.create({
-        data: {
-          collection_id: content.id,
-          token_id: content.token_id,
-          approved: content.approved,
-          status: 'normal',
-          create_time: inscription.timestamp,
-          update_time: inscription.timestamp,
-        },
+    if (content.approved) {
+      if (!validAddressPrefix(content.approved)) {
+        console.warn(
+          'approve operation failed: invalid address format',
+          JSON.stringify(inscription),
+        );
+        return;
+      }
+      // Save approval to database and transaction
+      await submitTransaction(transactionParams, async (tx) => {
+        await tx.approval.create({
+          data: {
+            collection_id: content.id,
+            token_id: content.token_id,
+            approved: content.approved,
+            status: 'normal',
+            create_time: inscription.timestamp,
+            update_time: inscription.timestamp,
+          },
+        });
       });
-    });
+    }else{
+      // Revoke approval
+      await submitTransaction(transactionParams, async (tx) => {
+        await tx.approval.updateMany({
+          where: {
+            collection_id: content.id,
+            token_id: content.token_id,
+            status: 'normal',
+          },
+          data: {
+            status: 'revoked',
+            update_time: inscription.timestamp,
+          },
+        });
+      });
+    }
   }
 
   async function handleSend(inscription: Inscription) {
