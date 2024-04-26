@@ -85,8 +85,8 @@ export type MintContent = z.infer<typeof MintContentSchema>;
 
 export const ApproveContentSchema = BaseContentSchema.extend({
   id: z.string(),
-  approved: z.string().refine(validSS58Address),
   token_id: z.number().int().min(0),
+  approved: z.string().refine(validSS58Address),
 });
 export type ApproveContent = z.infer<typeof ApproveContentSchema>;
 

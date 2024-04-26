@@ -747,7 +747,8 @@ export async function indexer(config: Config) {
     sender: string,
   ): Promise<{ token?: Token; failReason?: FailReason }> {
     const result = await findTokenAndCheckOwner(collectionId, tokenId, sender);
-    if (result.failReason) {
+    // Check if sender is token owner
+    if (result.token) {
       return result;
     }
 

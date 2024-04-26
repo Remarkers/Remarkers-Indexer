@@ -137,7 +137,7 @@ Change or reaffirm the approved address for an NFT, the approved address can tra
   "op": "approve", // string(required)
   "id": "20006173-1", // string(required): A created NFT collection ID
   "token_id": 0, // number(required):  The new approved NFT controller
-  "address": "1HzwKkNGv4gdWq4ds1C5k63u8hvmjC6ULneAaZbwUBZEauF" // string(optional): The new approved NFT controller, if not set, clear the approved address
+  "approved": "1HzwKkNGv4gdWq4ds1C5k63u8hvmjC6ULneAaZbwUBZEauF" // string(optional): The new approved NFT controller, if not set, clear the approved address
 }
 ```
 
@@ -151,8 +151,7 @@ Send an NFT this will transfer the nft from the current owner to the a new owner
   "op": "send", //  string(required)
   "id": "20006173-1", // string(required): A created NFT collection ID
   "token_id": 0, // number(required): A minted NFT token ID.
-  "from": "1HzwKkNGv4gdWq4ds1C5k63u8hvmjC6ULneAaZbwUBZEauF", // string(required): The current owner of the NFT
-  "to": "1HzwKkNGv4gdWq4ds1C5k63u8hvmjC6ULneAaZbwUBZEauF" // string(required): receiver address must be chain specified if you send to a wrong address who doesn't have existential balance or a wrong address then nft will be burned for ever or transaction will fail or may be recoreded but not fully received in case of nft sent to right chain address but without considering existential balance then it can be received once the receiver makes the account alive never send nft without a keep alive check in marketplace or without verifying the chain destination address
+  "recipient": "1HzwKkNGv4gdWq4ds1C5k63u8hvmjC6ULneAaZbwUBZEauF" // string(required): receiver address must be chain specified if you send to a wrong address who doesn't have existential balance or a wrong address then nft will be burned for ever or transaction will fail or may be recoreded but not fully received in case of nft sent to right chain address but without considering existential balance then it can be received once the receiver makes the account alive never send nft without a keep alive check in marketplace or without verifying the chain destination address
 }
 
 ```
