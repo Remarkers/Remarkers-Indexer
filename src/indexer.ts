@@ -145,10 +145,10 @@ export async function indexer(config: Config) {
     }
 
     // Check if collection is unique
-    const identifier = metadata.name.trim().replace(/\s+/g, '_').toLowerCase();
+    const slug = metadata.name.trim().replace(/\s+/g, '-').toLowerCase();
     const collection = await prisma.collection.findUnique({
       where: {
-        identifier: identifier,
+        slug,
       },
     });
     if (collection) {
@@ -181,7 +181,7 @@ export async function indexer(config: Config) {
         data: {
           collection_id: collectionId,
           name: metadata.name.trim(),
-          identifier,
+          slug,
           description: metadata.description,
           image: metadata.image,
           issuer: content.issuer ?? inscription.sender,
@@ -506,7 +506,7 @@ export async function indexer(config: Config) {
           },
         });
       });
-    }else{
+    } else {
       // Revoke approval
       await submitTransaction(transactionParams, async (tx) => {
         await tx.approval.updateMany({

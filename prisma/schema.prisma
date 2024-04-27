@@ -46,7 +46,7 @@ enum TransactionStatus {
 model Collection {
   id            BigInt    @id @default(autoincrement())
   collection_id String
-  identifier    String
+  slug          String
   name          String
   description   String?
   image         String
@@ -62,7 +62,7 @@ model Collection {
   update_time   DateTime
 
   @@unique([collection_id])
-  @@unique([identifier])
+  @@unique([slug])
   @@map("collection")
 }
 
